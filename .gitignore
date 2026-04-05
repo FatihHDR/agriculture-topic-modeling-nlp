@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Generated outputs (NLP preprocessing)
+dataset/ICAR_Text_Preprocessed.jsonl
+dataset/ICAR_Text_Preprocessing_Summary.json
+dataset/ICAR_Top_Words.csv
