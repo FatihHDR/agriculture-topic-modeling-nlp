@@ -21,3 +21,8 @@ Thumbs.db
 dataset/ICAR_Text_Preprocessed.jsonl
 dataset/ICAR_Text_Preprocessing_Summary.json
 dataset/ICAR_Top_Words.csv
+
+# .gitignore
+output/*.model
+output/*.npy
+output/*.csv
