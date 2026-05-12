@@ -1,11 +1,3 @@
-"""
-api_server.py
-─────────────
-FastAPI server yang meng-serve model TF-IDF + SVM untuk klasifikasi teks.
-Jalankan dengan:
-  .venv/bin/uvicorn api_server:app --reload --port 8000
-"""
-
 import os
 import re
 import joblib
@@ -13,22 +5,42 @@ import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from gensim.models import FastText
+import nltk
+from nltk.tokenize import word_tokenize
 
 # ── Paths ──────────────────────────────────────────────────────────────
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "output", "svm_classifier.pkl")
+TFIDF_MODEL_PATH = os.path.join(BASE_DIR, "output", "svm_classifier.pkl")
+FASTTEXT_MODEL_PATH = os.path.join(BASE_DIR, "output", "fasttext.model")
+SVM_FT_MODEL_PATH = os.path.join(BASE_DIR, "output", "svm_fasttext.pkl")
 
 # ── Load model at startup ───────────────────────────────────────────────
-print(f"Loading model from {MODEL_PATH} ...")
+print(f"Loading TF-IDF+SVM model from {TFIDF_MODEL_PATH} ...")
 try:
-    pipeline = joblib.load(MODEL_PATH)
-    CLASSES: list[str] = list(pipeline.classes_)
-    print(f"✅  Model loaded. Classes: {CLASSES}")
+    pipeline_tfidf = joblib.load(TFIDF_MODEL_PATH)
+    CLASSES: list[str] = list(pipeline_tfidf.classes_)
+    print(f"✅ TF-IDF Model loaded. Classes: {CLASSES}")
 except FileNotFoundError:
-    raise RuntimeError(
-        f"Model tidak ditemukan di {MODEL_PATH}. "
-        "Jalankan 'python train_model.py' terlebih dahulu."
-    )
+    print(f"⚠️ TF-IDF Model tidak ditemukan di {TFIDF_MODEL_PATH}.")
+    pipeline_tfidf = None
+
+print(f"Loading FastText model from {FASTTEXT_MODEL_PATH} ...")
+try:
+    fasttext_model = FastText.load(FASTTEXT_MODEL_PATH)
+    svm_fasttext = joblib.load(SVM_FT_MODEL_PATH)
+    print(f"✅ FastText + SVM Model loaded.")
+except FileNotFoundError:
+    print(f"⚠️ FastText / SVM Model tidak ditemukan.")
+    fasttext_model = None
+    svm_fasttext = None
+
+def get_fasttext_embedding(text: str):
+    words = word_tokenize(text.lower())
+    words = [w for w in words if w.isalpha()]
+    if not words:
+        return np.zeros(fasttext_model.vector_size)
+    return np.mean([fasttext_model.wv[w] for w in words], axis=0)
 
 # ── Color map untuk setiap kelas ────────────────────────────────────────
 CLASS_COLORS: dict[str, str] = {
@@ -73,6 +85,7 @@ app.add_middleware(
 # ── Schemas ─────────────────────────────────────────────────────────────
 class ClassifyRequest(BaseModel):
     text: str = Field(..., min_length=3, description="Teks yang akan diklasifikasikan")
+    method: str = Field(default="tfidf", description="Metode klasifikasi (tfidf atau fasttext)")
 
 class ClassScore(BaseModel):
     label: str
@@ -100,21 +113,29 @@ def classify(req: ClassifyRequest):
     if not text:
         raise HTTPException(status_code=400, detail="Teks tidak boleh kosong")
 
-    # Predict
-    proba = pipeline.predict_proba([text])[0]        # shape: (n_classes,)
+    if req.method == "fasttext" and fasttext_model and svm_fasttext:
+        emb = get_fasttext_embedding(text)
+        proba = svm_fasttext.predict_proba([emb])[0]
+        classes_used = list(svm_fasttext.classes_)
+    elif pipeline_tfidf:
+        proba = pipeline_tfidf.predict_proba([text])[0]
+        classes_used = CLASSES
+    else:
+        raise HTTPException(status_code=500, detail="Model belum dilatih.")
+
     pred_idx = int(np.argmax(proba))
-    pred_label = clean_label(CLASSES[pred_idx])
+    pred_label = clean_label(classes_used[pred_idx])
     confidence = float(proba[pred_idx])
 
     # Build per-class scores (sorted by probability desc)
     scores = sorted(
         [
             ClassScore(
-                label=clean_label(CLASSES[i]),
+                label=clean_label(classes_used[i]),
                 probability=float(proba[i]),
-                color=get_color(CLASSES[i]),
+                color=get_color(classes_used[i]),
             )
-            for i in range(len(CLASSES))
+            for i in range(len(classes_used))
         ],
         key=lambda s: s.probability,
         reverse=True,

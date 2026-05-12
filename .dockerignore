@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Data mentah tidak perlu ikut ke Docker (menghemat size)
+# Kita hanya butuh file model (.pkl dan .model) yang ada di output/
+output/*.csv
+output/*.png
+output/*.npz
