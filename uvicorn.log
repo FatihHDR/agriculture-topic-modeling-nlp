@@ -1,0 +1,11 @@
+INFO:     Started server process [28320]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
+Loading TF-IDF+SVM model from /home/fatih/Documents/Projects/nlp-dev/nlp-teori/output/svm_classifier.pkl ...
+✅ TF-IDF Model loaded. Classes: ['Annual Reports', 'Indian Farming', 'Indian Horticulture', 'Traditional Knowledge in Agriculture', 'ÔüáBooks', 'ÔüáReports']
+Loading FastText model from /home/fatih/Documents/Projects/nlp-dev/nlp-teori/output/fasttext.model ...
+✅ FastText + SVM Model loaded.
+Loading Decision Tree models ...
+✅ Decision Tree models loaded.
+INFO:     127.0.0.1:40480 - "POST /classify HTTP/1.1" 200 OK

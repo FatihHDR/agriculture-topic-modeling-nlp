@@ -14,6 +14,9 @@ BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 TFIDF_MODEL_PATH = os.path.join(BASE_DIR, "output", "svm_classifier.pkl")
 FASTTEXT_MODEL_PATH = os.path.join(BASE_DIR, "output", "fasttext.model")
 SVM_FT_MODEL_PATH = os.path.join(BASE_DIR, "output", "svm_fasttext.pkl")
+DT_TFIDF_PATH = os.path.join(BASE_DIR, "output", "dt_tfidf.pkl")
+DT_BOW_PATH = os.path.join(BASE_DIR, "output", "dt_bow.pkl")
+DT_NGRAM_PATH = os.path.join(BASE_DIR, "output", "dt_ngram.pkl")
 
 # ── Load model at startup ───────────────────────────────────────────────
 print(f"Loading TF-IDF+SVM model from {TFIDF_MODEL_PATH} ...")
@@ -34,6 +37,18 @@ except FileNotFoundError:
     print(f"⚠️ FastText / SVM Model tidak ditemukan.")
     fasttext_model = None
     svm_fasttext = None
+
+print("Loading Decision Tree models ...")
+try:
+    dt_tfidf = joblib.load(DT_TFIDF_PATH)
+    dt_bow = joblib.load(DT_BOW_PATH)
+    dt_ngram = joblib.load(DT_NGRAM_PATH)
+    print("✅ Decision Tree models loaded.")
+except FileNotFoundError:
+    print("⚠️ Decision Tree models tidak ditemukan.")
+    dt_tfidf = None
+    dt_bow = None
+    dt_ngram = None
 
 def get_fasttext_embedding(text: str):
     words = word_tokenize(text.lower())
@@ -76,7 +91,7 @@ app = FastAPI(
 # Allow requests from Next.js dev server
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://research.vyg.re"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -117,7 +132,17 @@ def classify(req: ClassifyRequest):
         emb = get_fasttext_embedding(text)
         proba = svm_fasttext.predict_proba([emb])[0]
         classes_used = list(svm_fasttext.classes_)
+    elif req.method == "dt-tfidf" and dt_tfidf:
+        proba = dt_tfidf.predict_proba([text])[0]
+        classes_used = list(dt_tfidf.classes_)
+    elif req.method == "dt-bow" and dt_bow:
+        proba = dt_bow.predict_proba([text])[0]
+        classes_used = list(dt_bow.classes_)
+    elif req.method == "dt-ngram" and dt_ngram:
+        proba = dt_ngram.predict_proba([text])[0]
+        classes_used = list(dt_ngram.classes_)
     elif pipeline_tfidf:
+        # Default to TF-IDF SVM
         proba = pipeline_tfidf.predict_proba([text])[0]
         classes_used = CLASSES
     else:
