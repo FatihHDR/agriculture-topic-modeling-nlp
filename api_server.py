@@ -17,6 +17,8 @@ SVM_FT_MODEL_PATH = os.path.join(BASE_DIR, "output", "svm_fasttext.pkl")
 DT_TFIDF_PATH = os.path.join(BASE_DIR, "output", "dt_tfidf.pkl")
 DT_BOW_PATH = os.path.join(BASE_DIR, "output", "dt_bow.pkl")
 DT_NGRAM_PATH = os.path.join(BASE_DIR, "output", "dt_ngram.pkl")
+NB_TFIDF_PATH = os.path.join(BASE_DIR, "output", "nb_tfidf.pkl")
+NB_BOW_PATH = os.path.join(BASE_DIR, "output", "nb_bow.pkl")
 
 # ── Load model at startup ───────────────────────────────────────────────
 print(f"Loading TF-IDF+SVM model from {TFIDF_MODEL_PATH} ...")
@@ -38,17 +40,18 @@ except FileNotFoundError:
     fasttext_model = None
     svm_fasttext = None
 
-print("Loading Decision Tree models ...")
+print("Loading Decision Tree & Naive Bayes models ...")
 try:
     dt_tfidf = joblib.load(DT_TFIDF_PATH)
     dt_bow = joblib.load(DT_BOW_PATH)
     dt_ngram = joblib.load(DT_NGRAM_PATH)
-    print("✅ Decision Tree models loaded.")
+    nb_tfidf = joblib.load(NB_TFIDF_PATH)
+    nb_bow = joblib.load(NB_BOW_PATH)
+    print("✅ Decision Tree & Naive Bayes models loaded.")
 except FileNotFoundError:
-    print("⚠️ Decision Tree models tidak ditemukan.")
-    dt_tfidf = None
-    dt_bow = None
-    dt_ngram = None
+    print("⚠️ Decision Tree / Naive Bayes models tidak ditemukan.")
+    dt_tfidf, dt_bow, dt_ngram = None, None, None
+    nb_tfidf, nb_bow = None, None
 
 def get_fasttext_embedding(text: str):
     words = word_tokenize(text.lower())
@@ -141,6 +144,12 @@ def classify(req: ClassifyRequest):
     elif req.method == "dt-ngram" and dt_ngram:
         proba = dt_ngram.predict_proba([text])[0]
         classes_used = list(dt_ngram.classes_)
+    elif req.method == "nb-tfidf" and nb_tfidf:
+        proba = nb_tfidf.predict_proba([text])[0]
+        classes_used = list(nb_tfidf.classes_)
+    elif req.method == "nb-bow" and nb_bow:
+        proba = nb_bow.predict_proba([text])[0]
+        classes_used = list(nb_bow.classes_)
     elif pipeline_tfidf:
         # Default to TF-IDF SVM
         proba = pipeline_tfidf.predict_proba([text])[0]
