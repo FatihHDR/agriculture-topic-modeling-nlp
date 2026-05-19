@@ -19,6 +19,7 @@ DT_BOW_PATH = os.path.join(BASE_DIR, "output", "dt_bow.pkl")
 DT_NGRAM_PATH = os.path.join(BASE_DIR, "output", "dt_ngram.pkl")
 NB_TFIDF_PATH = os.path.join(BASE_DIR, "output", "nb_tfidf.pkl")
 NB_BOW_PATH = os.path.join(BASE_DIR, "output", "nb_bow.pkl")
+NB_NGRAM_PATH = os.path.join(BASE_DIR, "output", "nb_ngram.pkl")
 
 # ── Load model at startup ───────────────────────────────────────────────
 print(f"Loading TF-IDF+SVM model from {TFIDF_MODEL_PATH} ...")
@@ -47,11 +48,12 @@ try:
     dt_ngram = joblib.load(DT_NGRAM_PATH)
     nb_tfidf = joblib.load(NB_TFIDF_PATH)
     nb_bow = joblib.load(NB_BOW_PATH)
+    nb_ngram = joblib.load(NB_NGRAM_PATH)
     print("✅ Decision Tree & Naive Bayes models loaded.")
 except FileNotFoundError:
     print("⚠️ Decision Tree / Naive Bayes models tidak ditemukan.")
     dt_tfidf, dt_bow, dt_ngram = None, None, None
-    nb_tfidf, nb_bow = None, None
+    nb_tfidf, nb_bow, nb_ngram = None, None, None
 
 def get_fasttext_embedding(text: str):
     words = word_tokenize(text.lower())
@@ -62,12 +64,12 @@ def get_fasttext_embedding(text: str):
 
 # ── Color map untuk setiap kelas ────────────────────────────────────────
 CLASS_COLORS: dict[str, str] = {
-    "Annual Reports":                       "#3b82f6", # Blue 500
-    "Indian Farming":                       "#475569", # Slate 600
-    "Indian Horticulture":                  "#64748b", # Slate 500
-    "Traditional Knowledge in Agriculture": "#334155", # Slate 700
-    "Books":                                "#2563eb", # Blue 600
-    "Reports":                              "#1d4ed8", # Blue 700
+    "Annual Reports":                       "#f59e0b",
+    "Indian Farming":                       "#06b6d4",
+    "Indian Horticulture":                  "#10b981",
+    "Traditional Knowledge in Agriculture": "#ec4899",
+    "Books":                                "#6366f1",
+    "Reports":                              "#8b5cf6",
 }
 
 def get_color(label: str) -> str:
@@ -150,6 +152,9 @@ def classify(req: ClassifyRequest):
     elif req.method == "nb-bow" and nb_bow:
         proba = nb_bow.predict_proba([text])[0]
         classes_used = list(nb_bow.classes_)
+    elif req.method == "nb-ngram" and nb_ngram:
+        proba = nb_ngram.predict_proba([text])[0]
+        classes_used = list(nb_ngram.classes_)
     elif pipeline_tfidf:
         # Default to TF-IDF SVM
         proba = pipeline_tfidf.predict_proba([text])[0]
